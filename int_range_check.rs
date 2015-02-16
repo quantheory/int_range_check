@@ -1,81 +1,48 @@
 
-#![feature(core)]
-use std::num::{Int, NumCast, ToPrimitive};
+use std::num::Int;
 use std::cmp::{min, max};
 
 use self::MergeResult::*;
 
 #[derive(Copy,Debug,Eq,PartialEq)]
-struct MergeRange {
-    start: u64,
-    end: u64,
+struct MergeRange<T: Int> {
+    start: T,
+    end: T,
 }
 
 #[derive(Copy,Debug,Eq,PartialEq)]
-enum MergeResult {
+enum MergeResult<T: Int> {
     Separate,
-    Adjacent(MergeRange),
-    Overlap(MergeRange, MergeRange),
+    Adjacent(MergeRange<T>),
+    Overlap(MergeRange<T>, MergeRange<T>),
 }
 
-fn encode_as_u64<T: Int>(x: T) -> u64 {
-    if <T as Int>::min_value() >= <T as Int>::zero() {
-        // The unsigned case is easy.
-        x.to_u64().unwrap()
-    } else {
-        // For the signed case, we convert to i64, then convert that to u64 with
-        // a shift upward to keep the domain continuous.
-        let x_i64 = x.to_i64().unwrap();
-        if x_i64 >= 0 {
-            x_i64.to_u64().unwrap() + (1u64 << 63)
-        } else {
-            (x_i64 - <i64 as Int>::min_value()).to_u64().unwrap()
-        }
-    }
-}
-
-fn decode_from_u64<T: Int>(x: u64) -> T {
-    if <T as Int>::min_value() >= <T as Int>::zero() {
-        <T as NumCast>::from(x).unwrap()
-    } else {
-        let x_i64 = if x >= (1u64 << 63) {
-            (x - (1u64 << 63)).to_i64().unwrap()
-        } else {
-            x.to_i64().unwrap() + <i64 as Int>::min_value()
-        };
-        <T as NumCast>::from(x_i64).unwrap()
-    }
-}
-
-impl MergeRange {
-    fn from_range<T: Int>(start: T, end: T) -> MergeRange {
+impl<T: Int> MergeRange<T> {
+    fn from_range(start: T, end: T) -> Self {
         assert!(start <= end);
-        MergeRange {
-            start: encode_as_u64(start),
-            end: encode_as_u64(end),
-        }
+        MergeRange{start: start, end: end}
     }
-    fn to_range<T: Int>(self) -> (T, T) {
-        (decode_from_u64(self.start), decode_from_u64(self.end))
+    fn to_range(self) -> (T, T) {
+        (self.start, self.end)
     }
-    fn from_range_to<T: Int>(end: T) -> MergeRange {
+    fn from_range_to(end: T) -> Self {
         MergeRange::from_range(<T as Int>::min_value(), end)
     }
-    fn from_range_from<T: Int>(start: T) -> MergeRange {
+    fn from_range_from(start: T) -> Self {
         MergeRange::from_range(start, <T as Int>::max_value())
     }
-    fn range_full<T: Int>() -> MergeRange {
+    fn range_full() -> Self {
         MergeRange::from_range(<T as Int>::min_value(), <T as Int>::max_value())
     }
-    fn concatenate(self, other: MergeRange) -> Option<MergeRange> {
-        if self.end < (<u64 as Int>::max_value()) &&
-            self.end + 1 == other.start {
+    fn concatenate(self, other: Self) -> Option<Self> {
+        if self.end < (<T as Int>::max_value()) &&
+            self.end + <T as Int>::one() == other.start {
                 Some(MergeRange{start: self.start, end: other.end})
             } else {
                 None
             }
     }
-    fn merge(self, other: MergeRange) -> MergeResult {
+    fn merge(self, other: Self) -> MergeResult<T> {
         // Check for adjacent ranges that can be concatenated.
         match self.concatenate(other) {
             Some(concat) => return Adjacent(concat),
@@ -125,7 +92,7 @@ mod tests {
     }
     #[test]
     fn range_full_merge_range_conversion() {
-        assert_eq!(MergeRange::range_full::<i32>().to_range(),
+        assert_eq!(MergeRange::range_full().to_range(),
                    (<i32 as Int>::min_value(), <i32 as Int>::max_value()));
     }
     #[test]
@@ -145,7 +112,7 @@ mod tests {
     fn merge_edge_adjacent_ranges() {
         let x = MergeRange::from_range_to(1u64);
         let y = MergeRange::from_range_from(2u64);
-        assert_eq!(x.merge(y), Adjacent(MergeRange::range_full::<u64>()));
+        assert_eq!(x.merge(y), Adjacent(MergeRange::range_full()));
         assert_eq!(y.merge(x), x.merge(y));
     }
     #[test]
