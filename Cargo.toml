@@ -1,0 +1,8 @@
+[package]
+
+name = "int_range_check"
+version = "0.0.1"
+authors = ["Sean Patrick Santos <SeanPatrickSantos@gmail.com>"]
+description = "Integer range checks for exhaustiveness and overlap."
+readme = "README.md"
+license = "Apache-2.0"
