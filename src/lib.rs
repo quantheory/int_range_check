@@ -1,4 +1,4 @@
-
+/// Range checking utility for Rust integer types.
 #![crate_name(int_range_check)]
 #![crate_type="lib"]
 
@@ -8,6 +8,16 @@ use std::num::Int;
 
 use self::MergeResult::*;
 
+/// Returns:
+///
+///  1) a vector containing the ranges representable by the integer type which
+///     are not covered by the ranges given by the input, and
+///
+///  2) a vector containing the ranges that are covered by more than one range
+///     in the input.
+///
+/// If the former is empty, then the input ranges are exhaustive. If the latter
+/// is empty, then they have no overlap.
 pub fn uncovered_and_overlapped<T: Int>(ranges: &Vec<IntRange<T>>)
       -> (Vec<IntRange<T>>, Vec<IntRange<T>>) {
     let (range_set, overlap_set) =
@@ -21,6 +31,10 @@ pub fn uncovered_and_overlapped<T: Int>(ranges: &Vec<IntRange<T>>)
          .map(|&x| IntRange::from_merge_range(x)).collect())
 }
 
+/// Representation of inclusive integer ranges.
+///
+/// `To`, `From`, and `Full` are the inclusive equivalents of the associated
+/// `Range` types. `Bound` is the equivalent of `Range` itself.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum IntRange<T: Int> {
     Bound(T, T),
